@@ -1,0 +1,65 @@
+#+TITLE: Utility for tagging movie files
+
+* About
+
+~tagmov~ is a utility program for tagging movie files
+with things like progress bar and texts. When given
+multiple inputs, combines them (stacks horizontally)
+into one video.
+
+* Getting Started
+
+Prerequisites:
+
+=Common Lisp= implementation (tested with SBCL), =Quicklisp=,
+=make= and =ffmpeg= are required. =ffmpeg= must be compiled
+with support for drawing text.
+
+Get sources and build by issuing commands:
+
+#+begin_src shell
+git clone https://github.com/octaspire/tagmov.git
+cd tagmov
+make
+#+end_src
+
+* Usage
+
+Please note that these examples require a movie file
+=video.mp4= to be present in the current working directory.
+
+If using a video with different name or different format,
+please use the correct name in the following commands.
+
+*** One Input
+
+This adds a red progress bar and three texts to the video:
+
+#+begin_src shell
+tagmov --font-color blue --text '13 20 100 200 Text at (100,200) during 13s-20s' \
+                         --text '0 10 20 30 This text is shown between 0s-10s'   \
+       --font-color red  --font-size 40                                          \
+                         --text '23 30 60 70 This is in red and different size'  \
+       --input video.mp4 --bar red
+#+end_src
+
+*** Two Inputs
+
+This combines the two given videos horizontally and adds two texts
+into the result. Note how the ~x~-coordinate of the second text
+is calculated using expression ~W-200~; this puts the text to
+start 200 pixels from the right side of the video. This way
+there is no need to calculate the position by adding the widths
+of the different input videos manually.
+
+#+begin_src shell
+tagmov --font-color red -i video.mp4 -i video.mp4 \
+       --text "10 20 100 100 BEFORE"              \
+       --text "10 20 W-200 100 AFTER"
+#+end_src
+
+The font and text size can also be changed.
+Font, size and color settings are in effect as
+long as they are not changed.
+
+See all available options with command ~tagmov --help~.
