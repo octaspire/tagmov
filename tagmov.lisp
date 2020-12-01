@@ -28,7 +28,7 @@
   (read-line (uiop:process-info-output
               (uiop:launch-program (format
                                     nil
-                                    "ffprobe -v error -show_entries stream=width -of csv=p=0:s=x ~A"
+                                    "ffprobe -v error -show_entries stream=width -of default=noprint_wrappers=1:nokey=1 ~A"
                                     path)
                                    :output :stream))))
 
@@ -86,22 +86,26 @@
   (setf *verbose* (parse-integer x)))
 
 (defun max-duration ()
-  (reduce #'(lambda (x y)
-              (max (file-duration x)
-                   (file-duration y))) *files*))
+  (let ((result 0))
+    (loop for x in *files*
+          do (let ((dur (parse-float:parse-float (file-duration x))))
+               (when (> dur result)
+                 (setf result dur))))
+    result))
 
 (defun total-width ()
   (let ((result 0))
     (loop for x in *files*
-          do (incf result (file-width x)))
+          do (incf result (parse-integer (file-width x))))
     result))
 
-(defun bar-to-command (x command)
+(defun bar-to-command (x command video)
   (if x
       (str:concat command (format nil
-                                  "color=c=~A:s=~Ax6[bar];[0][bar]overlay=-w+(w/~A)*t:H-h:shortest=1"
+                                  "color=c=~A:s=~Ax6[bar];[~A][bar]overlay=-w+(w/~A)*t:H-h:shortest=1"
                                   x
                                   (total-width)
+                                  video
                                   (max-duration)))
       command))
 
@@ -156,7 +160,7 @@
 
 (defun run-single ()
   (let ((command (format nil "ffmpeg -y -i ~A -filter_complex \"" (file-name (car *files*)))))
-    (setf command (bar-to-command *bar* command))
+    (setf command (bar-to-command *bar* command 0))
     (loop for txt in *txts*
           do  (setf command (str:concat command ", "))
               (setf command (text-to-command txt command)))
@@ -171,8 +175,10 @@
     (setf command (str:concat command " -filter_complex \""))
     (loop for i from 0 to (- (length *files*) 1)
           do (setf command (str:concat command (format nil "[~A:v]" i))))
-    (setf command (str:concat command (format nil "hstack=inputs=~A[v];[v]" (length *files*))))
-    (setf command (bar-to-command *bar* command))
+    (setf command (str:concat command (format nil "hstack=inputs=~A" (length *files*))))
+    (when (or *bar* *txts*)
+      (setf command (str:concat command "[v];"))) ; No semicolon in last filter
+    (setf command (bar-to-command *bar* command "v"))
     (loop for i from 0 to (- (length *txts*) 1)
           do  (when (or (> i 0) *bar*)
                 (setf command (str:concat command ", ")))
