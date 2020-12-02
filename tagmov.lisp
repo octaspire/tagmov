@@ -8,12 +8,13 @@
 (defstruct file name duration width)
 
 (defparameter *files* nil)
-(defparameter *result* nil)
-(defparameter *fontfile* "IBMPlexMono-Regular.ttf")
+(defparameter *result* "out.mp4")
+(defparameter *fontfile* "IBMPlexMono-Bold.ttf")
 (defparameter *fontsize* 32)
 (defparameter *fontcolor* "white")
 (defparameter *txts* nil)
 (defparameter *bar* nil)
+(defparameter *barh* 20)
 (defparameter *verbose* 0)
 
 (defun get-video-duration (path)
@@ -38,9 +39,10 @@
                           :duration (get-video-duration x)
                           :width (get-video-width x))))
         (setf *files* (cons f *files*)))
-      (error 'input-unreadable-error :name x))
-  (when (= (length *files*) 1)
-    (setf *result* (str:concat x ".mkv"))))
+      (error 'input-unreadable-error :name x)))
+
+(defun output-file-parser (x)
+  (setf *result* x))
 
 (defun input-file-parser (x)
   (add-input-file x))
@@ -82,6 +84,9 @@
 (defun bar-parser (x)
   (setf *bar* x))
 
+(defun barh-parser (x)
+  (setf *barh* (parse-integer x)))
+
 (defun verbose-parser (x)
   (setf *verbose* (parse-integer x)))
 
@@ -99,14 +104,16 @@
           do (incf result (parse-integer (file-width x))))
     result))
 
-(defun bar-to-command (x command video)
+(defun bar-to-command (x command many)
   (if x
       (str:concat command (format nil
-                                  "color=c=~A:s=~Ax6[bar];[~A][bar]overlay=-w+(w/~A)*t:H-h:shortest=1"
+                                  "color=c=~A:s=~Ax~A[bar];[~A][bar]overlay=-w+(w/~A)*t:H-h:shortest=1~A"
                                   x
                                   (total-width)
-                                  video
-                                  (max-duration)))
+                                  *barh*
+                                  (if many "v" 0)
+                                  (max-duration)
+                                  (if *txts* "[barred]" "")))
       command))
 
 (opts:define-opts
@@ -120,10 +127,15 @@
    :long "verbose"
    :arg-parser #'verbose-parser)
   (:name :input
-   :description "Set the input move file name"
+   :description "Set the input movie file name"
    :short #\i
    :long "input"
    :arg-parser #'input-file-parser)
+  (:name :output
+   :description "Set the output movie file name"
+   :short #\o
+   :long "output"
+   :arg-parser #'output-file-parser)
   (:name :font-file
    :description "Set the font to be used"
    :short #\f
@@ -145,10 +157,14 @@
    :long "text"
    :arg-parser #'text-parser)
   (:name :bar
-   :description "Render progress bar"
+   :description "Render progress bar with color"
    :short #\b
    :long "bar"
-   :arg-parser #'bar-parser))
+   :arg-parser #'bar-parser)
+  (:name :barh
+   :description "Set height of progress bar"
+   :long "barh"
+   :arg-parser #'barh-parser))
 
 (defun dbg (fmt &rest args)
   (when (> *verbose* 0)
@@ -158,43 +174,33 @@
   `(when (getf ,options ,opt)
      ,@body))
 
-(defun run-single ()
-  (let ((command (format nil "ffmpeg -y -i ~A -filter_complex \"" (file-name (car *files*)))))
-    (setf command (bar-to-command *bar* command 0))
-    (loop for txt in *txts*
-          do  (setf command (str:concat command ", "))
-              (setf command (text-to-command txt command)))
-    (setf command (str:concat command (format nil "\" -acodec copy ~A" *result*)))
-    (dbg "~%Command is: '~A'~%" command)
-    (uiop:run-program command)))
-
-(defun run-many ()
-  (let ((command (format nil "ffmpeg -y ")))
+(defun run ()
+  (setf *files* (reverse *files*))
+  (let ((many (> (length *files*) 1))
+        (command (format nil "ffmpeg -y ")))
     (loop for f in *files*
           do (setf command (str:concat command (format nil "-i ~A " (file-name f)))))
     (setf command (str:concat command " -filter_complex \""))
-    (loop for i from 0 to (- (length *files*) 1)
-          do (setf command (str:concat command (format nil "[~A:v]" i))))
-    (setf command (str:concat command (format nil "hstack=inputs=~A" (length *files*))))
-    (when (or *bar* *txts*)
-      (setf command (str:concat command "[v];"))) ; No semicolon in last filter
-    (setf command (bar-to-command *bar* command "v"))
+    (when many
+      (loop for i from 0 to (- (length *files*) 1)
+            do (setf command (str:concat command (format nil "[~A:v]" i))))
+      (setf command (str:concat command (format nil "hstack=inputs=~A" (length *files*)))))
+    (when (and many (or *bar* (> (length *txts*) 0))) (setf command (str:concat command "[v];")))
+    (setf command (bar-to-command *bar* command many))
+    (when (and (> (length *txts*) 0) *bar*)
+      (setf command (str:concat command ";")))
     (loop for i from 0 to (- (length *txts*) 1)
-          do  (when (or (> i 0) *bar*)
-                (setf command (str:concat command ", ")))
+          do  (if (= i 0)
+                  (setf command (str:concat command (if *bar* "[barred]" (if many "[v]" "[0]"))))
+                  (setf command (str:concat command ", ")))
               (setf command (text-to-command (nth i *txts*) command)))
     (setf command (str:concat command (format nil "\" -acodec copy ~A" *result*)))
     (dbg "~%Command is: '~A'~%" command)
     (uiop:run-program command)))
 
-(defun run ()
-  (if (> (length *files*) 1)
-      (run-many)
-      (run-single)))
-
 (defun usage ()
   (opts:describe
-   :prefix "Tag movie file with progress bar and texts"
+   :prefix "Tag video with progress bar and texts, stack multiple videos horizontally"
    :usage-of "tagmov"))
 
 (defun unknown-option (condition)

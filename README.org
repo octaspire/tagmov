@@ -13,7 +13,9 @@ Prerequisites:
 
 =Common Lisp= implementation (tested with SBCL), =Quicklisp=,
 =make= and =ffmpeg= are required. =ffmpeg= must be compiled
-with support for drawing text.
+with support for drawing text. Also, the default font used
+is =IBMPlexMono-Bold.ttf=, so that should be installed, or
+another font should be defined using the ~font-file~ option.
 
 Get sources and build by issuing commands:
 
@@ -25,8 +27,9 @@ make
 
 * Usage
 
-Please note that these examples require a movie file
-=video.mp4= to be present in the current working directory.
+Please note that these examples require movie files
+=video01.mp4= and =video02.mp4= to be present in
+the current working directory.
 
 If using a video with different name or different format,
 please use the correct name in the following commands.
@@ -36,11 +39,11 @@ please use the correct name in the following commands.
 This adds a red progress bar and three texts to the video:
 
 #+begin_src shell
-tagmov --font-color blue --text '13 20 100 200 Text at (100,200) during 13s-20s' \
-                         --text '0 10 20 30 This text is shown between 0s-10s'   \
-       --font-color red  --font-size 40                                          \
-                         --text '23 30 60 70 This is in red and different size'  \
-       --input video.mp4 --bar red
+./tagmov --font-color blue --text '1 3 10 10 Text at (10,100) during 1s-3s'    \
+                         --text '2 3 10 60 This text is shown between 2s-3s'   \
+         --font-color red  --font-size 40                                      \
+                         --text '1 3 10 110 This is in red and different size' \
+         --input video01.mp4 --bar red
 #+end_src
 
 *** Two Inputs
@@ -50,16 +53,17 @@ into the result. Note how the ~x~-coordinate of the second text
 is calculated using expression ~W-200~; this puts the text to
 start 200 pixels from the right side of the video. This way
 there is no need to calculate the position by adding the widths
-of the different input videos manually.
+of the different input videos manually. Note also, that there can
+be more than two videos.
 
 #+begin_src shell
-tagmov --font-color red -i video.mp4 -i video.mp4 \
-       --text "10 20 100 100 BEFORE"              \
-       --text "10 20 W-200 100 AFTER"
+./tagmov --font-color red -i video01.mp4 -i video02.mp4 \
+         --text "1 3 100 100 BEFORE"                    \
+         --text "1 3 W-200 100 AFTER"
 #+end_src
 
-The font and text size can also be changed.
-Font, size and color settings are in effect as
-long as they are not changed.
+The font and text size can also be changed. So can the
+height of the progress bar. Font, size and color settings
+are in effect as long as they are not changed.
 
 See all available options with command ~tagmov --help~.
