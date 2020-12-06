@@ -20,7 +20,7 @@
 (defparameter *barh* 20)
 (defparameter *verbose* 0)
 (defparameter *version-major* 0)
-(defparameter *version-minor* 1)
+(defparameter *version-minor* 2)
 (defparameter *version-patch* 0)
 
 (defun get-video-duration (path)
@@ -184,6 +184,9 @@
      ,@body))
 
 (defun run ()
+  (unless *files*
+    (usage)
+    (return-from run))
   (setf *files* (reverse *files*))
   (let ((many (> (length *files*) 1))
         (command (format nil "ffmpeg -y ")))
@@ -225,19 +228,18 @@
 
 (defmacro cond-option (options &rest clauses)
   (alexandria:with-gensyms
-      (clause option forms todo)
-    ;; If run like this:
-    ;; (cond-option options ((:help f1) (:version f2 f3) (t f4)))
-    `(let* ((,clause (caar ',clauses))  ; '(:help f1)
-            (,option (car  ',clause))   ; :help
-            (,forms  (cdr  ',clause))   ; '(f1)
-            (,todo   (cdar ',clauses))) ; '((:version f2 f3) (t f4))
-       (if (null ',clause)
-           nil
-           (if (or (getf ,options ,option)
-                   (and (null ',todo) (eq ,option t)))
-               `(progn ,@,forms)
-               `(cond-option ,,options ,@,todo))))))
+      (clause option forms maxi)
+    `(let* ((,maxi (- (length ',clauses) 1)))
+       (loop for i from 0 to ,maxi
+             do   (let* ((,clause (nth i ',clauses))
+                         (,option (car   ,clause))
+                         (,forms  (cdr   ,clause)))
+                    (if (null ,clause)
+                        nil
+                        (when (or (getf ,options ,option)
+                                  (and (= i ,maxi) (eq ,option t)))
+                          (eval `(progn ,@,forms))
+                          (return))))))))
 
 (defun main ()
   (let ((options (handler-case
@@ -247,6 +249,4 @@
     (cond-option options
                  (:help (usage))
                  (:version (version))
-                 (t (if (> (length *files*) 0) ; default case
-                        (run)
-                        (usage))))))
+                 (t  (run)))))
