@@ -223,17 +223,30 @@
   (format t "Argument Parse Error: ~A~%" (opts:option condition))
   (invoke-restart 'opts:skip-option))
 
+(defmacro cond-option (options &rest clauses)
+  (alexandria:with-gensyms
+      (clause option forms todo)
+    ;; If run like this:
+    ;; (cond-option options ((:help f1) (:version f2 f3) (t f4)))
+    `(let* ((,clause (caar ',clauses))  ; '(:help f1)
+            (,option (car  ',clause))   ; :help
+            (,forms  (cdr  ',clause))   ; '(f1)
+            (,todo   (cdar ',clauses))) ; '((:version f2 f3) (t f4))
+       (if (null ',clause)
+           nil
+           (if (or (getf ,options ,option)
+                   (and (null ',todo) (eq ,option t)))
+               `(progn ,@,forms)
+               `(cond-option ,,options ,@,todo))))))
+
 (defun main ()
   (let ((options (handler-case
                      (handler-bind ((opts:arg-parser-failed #'parser-error)
                                     (opts:unknown-option    #'unknown-option))
                        (opts:get-opts)))))
-    (when-option (options :help)
-                 (usage))
-    (when-option (options :version)
-                 (version))
-    (if (> (length *files*) 0)
-        (run)
-        (unless (or (getf options :help)
-                    (getf options :version))
-          (usage)))))
+    (cond-option options
+                 (:help (usage))
+                 (:version (version))
+                 (t (if (> (length *files*) 0) ; default case
+                        (run)
+                        (usage))))))
