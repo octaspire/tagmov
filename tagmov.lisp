@@ -4,6 +4,9 @@
 
 (in-package :tagmov)
 
+(defun concat (s1 s2)
+  (concatenate 'string s1 s2))
+
 (defstruct text t1 t2 x y txt color font size)
 (defstruct file name duration width)
 
@@ -16,6 +19,9 @@
 (defparameter *bar* nil)
 (defparameter *barh* 20)
 (defparameter *verbose* 0)
+(defparameter *version-major* 0)
+(defparameter *version-minor* 1)
+(defparameter *version-patch* 0)
 
 (defun get-video-duration (path)
   (read-line (uiop:process-info-output
@@ -69,17 +75,17 @@
     (setf *txts* (cons text *txts*))))
 
 (defun text-to-command (txt command)
-  (str:concat command
-              (format nil
-                      "drawtext=enable='between(t,~A,~A)':text='~A':x=~A:y=~A:fontfile=~A:fontsize=~A:fontcolor=~A"
-                      (text-t1 txt)
-                      (text-t2 txt)
-                      (text-txt txt)
-                      (text-x txt)
-                      (text-y txt)
-                      (text-font txt)
-                      (text-size txt)
-                      (text-color txt))))
+  (concat command
+          (format nil
+                  "drawtext=enable='between(t,~A,~A)':text='~A':x=~A:y=~A:fontfile=~A:fontsize=~A:fontcolor=~A"
+                  (text-t1 txt)
+                  (text-t2 txt)
+                  (text-txt txt)
+                  (text-x txt)
+                  (text-y txt)
+                  (text-font txt)
+                  (text-size txt)
+                  (text-color txt))))
 
 (defun bar-parser (x)
   (setf *bar* x))
@@ -106,14 +112,14 @@
 
 (defun bar-to-command (x command many)
   (if x
-      (str:concat command (format nil
-                                  "color=c=~A:s=~Ax~A[bar];[~A][bar]overlay=-w+(w/~A)*t:H-h:shortest=1~A"
-                                  x
-                                  (total-width)
-                                  *barh*
-                                  (if many "v" 0)
-                                  (max-duration)
-                                  (if *txts* "[barred]" "")))
+      (concat command (format nil
+                              "color=c=~A:s=~Ax~A[bar];[~A][bar]overlay=-w+(w/~A)*t:H-h:shortest=1~A"
+                              x
+                              (total-width)
+                              *barh*
+                              (if many "v" 0)
+                              (max-duration)
+                              (if *txts* "[barred]" "")))
       command))
 
 (opts:define-opts
@@ -126,6 +132,9 @@
    :short #\v
    :long "verbose"
    :arg-parser #'verbose-parser)
+  (:name :version
+   :description "Show version information"
+   :long "version")
   (:name :input
    :description "Set the input movie file name"
    :short #\i
@@ -179,22 +188,22 @@
   (let ((many (> (length *files*) 1))
         (command (format nil "ffmpeg -y ")))
     (loop for f in *files*
-          do (setf command (str:concat command (format nil "-i ~A " (file-name f)))))
-    (setf command (str:concat command " -filter_complex \""))
+          do (setf command (concat command (format nil "-i ~A " (file-name f)))))
+    (setf command (concat command " -filter_complex \""))
     (when many
       (loop for i from 0 to (- (length *files*) 1)
-            do (setf command (str:concat command (format nil "[~A:v]" i))))
-      (setf command (str:concat command (format nil "hstack=inputs=~A" (length *files*)))))
-    (when (and many (or *bar* (> (length *txts*) 0))) (setf command (str:concat command "[v];")))
+            do (setf command (concat command (format nil "[~A:v]" i))))
+      (setf command (concat command (format nil "hstack=inputs=~A" (length *files*)))))
+    (when (and many (or *bar* (> (length *txts*) 0))) (setf command (concat command "[v];")))
     (setf command (bar-to-command *bar* command many))
     (when (and (> (length *txts*) 0) *bar*)
-      (setf command (str:concat command ";")))
+      (setf command (concat command ";")))
     (loop for i from 0 to (- (length *txts*) 1)
           do  (if (= i 0)
-                  (setf command (str:concat command (if *bar* "[barred]" (if many "[v]" "[0]"))))
-                  (setf command (str:concat command ", ")))
+                  (setf command (concat command (if *bar* "[barred]" (if many "[v]" "[0]"))))
+                  (setf command (concat command ", ")))
               (setf command (text-to-command (nth i *txts*) command)))
-    (setf command (str:concat command (format nil "\" -acodec copy ~A" *result*)))
+    (setf command (concat command (format nil "\" -acodec copy ~A" *result*)))
     (dbg "~%Command is: '~A'~%" command)
     (uiop:run-program command)))
 
@@ -202,6 +211,9 @@
   (opts:describe
    :prefix "Tag video with progress bar and texts, stack multiple videos horizontally"
    :usage-of "tagmov"))
+
+(defun version ()
+  (format t "tagmov ~A.~A.~A~%" *version-major* *version-minor* *version-patch*))
 
 (defun unknown-option (condition)
   (format t "Error: option '~A' is unknown~%" (opts:option condition))
@@ -218,7 +230,10 @@
                        (opts:get-opts)))))
     (when-option (options :help)
                  (usage))
+    (when-option (options :version)
+                 (version))
     (if (> (length *files*) 0)
         (run)
-        (unless (getf options :help)
+        (unless (or (getf options :help)
+                    (getf options :version))
           (usage)))))
