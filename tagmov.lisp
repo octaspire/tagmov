@@ -20,7 +20,7 @@
 (defparameter *barh* 20)
 (defparameter *verbose* 0)
 (defparameter *version-major* 0)
-(defparameter *version-minor* 2)
+(defparameter *version-minor* 3)
 (defparameter *version-patch* 0)
 
 (defun get-video-duration (path)
@@ -228,18 +228,9 @@
 
 (defmacro cond-option (options &rest clauses)
   (alexandria:with-gensyms
-      (clause option forms maxi)
-    `(let* ((,maxi (- (length ',clauses) 1)))
-       (loop for i from 0 to ,maxi
-             do   (let* ((,clause (nth i ',clauses))
-                         (,option (car   ,clause))
-                         (,forms  (cdr   ,clause)))
-                    (if (null ,clause)
-                        nil
-                        (when (or (getf ,options ,option)
-                                  (and (= i ,maxi) (eq ,option t)))
-                          (eval `(progn ,@,forms))
-                          (return))))))))
+      (option value)
+    `(loop for (,option ,value) on ,options by #'cddr
+           do (case ,option ,@clauses))))
 
 (defun main ()
   (let ((options (handler-case
@@ -249,4 +240,4 @@
     (cond-option options
                  (:help (usage))
                  (:version (version))
-                 (t  (run)))))
+                 (otherwise (run)))))
