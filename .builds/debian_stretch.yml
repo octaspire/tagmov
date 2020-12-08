@@ -8,9 +8,11 @@ tasks:
     - setup: |
         curl -O https://beta.quicklisp.org/quicklisp.lisp
         sbcl --load quicklisp.lisp --eval '(quicklisp-quickstart:install)' --eval '(ql-util:without-prompting (ql:add-to-init-file))' --eval '(quit)'
-        cd tagmov
+        cd ~/tagmov
         make
     - show-version: |
+        cd ~/tagmov
         ./tagmov --help
     - check-version: |
-        diff <(./tagmov --version) <(echo "tagmov 0.4.0")
+        cd ~/tagmov
+        diff <(./tagmov --version) <(echo "tagmov 0.4.1")

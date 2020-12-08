@@ -21,7 +21,7 @@
 (defparameter *verbose* 0)
 (defparameter *version-major* 0)
 (defparameter *version-minor* 4)
-(defparameter *version-patch* 0)
+(defparameter *version-patch* 1)
 
 (defun get-video-duration (path)
   (read-line (uiop:process-info-output
