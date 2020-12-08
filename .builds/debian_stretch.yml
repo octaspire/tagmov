@@ -10,9 +10,12 @@ tasks:
         sbcl --load quicklisp.lisp --eval '(quicklisp-quickstart:install)' --eval '(ql-util:without-prompting (ql:add-to-init-file))' --eval '(quit)'
         cd ~/tagmov
         make
-    - show-version: |
+    - show-help: |
         cd ~/tagmov
         ./tagmov --help
+    - show-version: |
+        cd ~/tagmov
+        ./tagmov --version
     - check-version: |
         cd ~/tagmov
         diff <(./tagmov --version) <(echo "tagmov 0.4.1")
