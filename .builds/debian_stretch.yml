@@ -1,0 +1,16 @@
+image: debian/bullseye
+packages:
+    - build-essential
+    - sbcl
+sources:
+    - https://git.sr.ht/~octaspire/tagmov
+tasks:
+    - setup: |
+        curl -O https://beta.quicklisp.org/quicklisp.lisp
+        sbcl --load quicklisp.lisp --eval '(quicklisp-quickstart:install)' --eval '(ql-util:without-prompting (ql:add-to-init-file))' --eval '(quit)'
+        cd tagmov
+        make
+    - show-version: |
+        ./tagmov --help
+    - check-version: |
+        diff <(./tagmov --version) <(echo "tagmov 0.4.0")

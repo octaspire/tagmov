@@ -20,7 +20,7 @@
 (defparameter *barh* 20)
 (defparameter *verbose* 0)
 (defparameter *version-major* 0)
-(defparameter *version-minor* 3)
+(defparameter *version-minor* 4)
 (defparameter *version-patch* 0)
 
 (defun get-video-duration (path)
