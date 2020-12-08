@@ -18,4 +18,4 @@ tasks:
         ./tagmov --version
     - check-version: |
         cd ~/tagmov
-        diff <(./tagmov --version) <(echo "tagmov 0.4.1")
+        diff <(./tagmov --version) <(echo "tagmov 0.4.3")

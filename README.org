@@ -39,10 +39,10 @@ please use the correct name in the following commands.
 This adds a red progress bar and three texts to the video:
 
 #+begin_src shell
-./tagmov --font-color blue --text '1 3 10 10 Text at (10,100) during 1s-3s'    \
-                         --text '2 3 10 60 This text is shown between 2s-3s'   \
-         --font-color red  --font-size 40                                      \
-                         --text '1 3 10 110 This is in red and different size' \
+./tagmov --font-color blue --text '1 3 10 10 Text at (10,100) during 1s-3s'      \
+                           --text '2 3 10 60 This text is shown between 2s-3s'   \
+         --font-color red  --font-size 40                                        \
+                           --text '1 3 10 110 This is in red and different size' \
          --input video01.mp4 --bar red
 #+end_src
 
